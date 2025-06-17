@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>氯离子环境下钢筋混凝土寿命预测</title>
+  <!-- 添加Chart.js库 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="styles.css" rel="stylesheet"> <!-- 添加这一行，引用您的CSS文件 -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <!-- 配置Tailwind CSS -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#0FC6C2',
+            neutral: '#F5F7FA',
+            success: '#00B42A',
+            warning: '#FF7D00',
+            danger: '#F53F3F',
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .card-shadow {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      }
+      .input-focus {
+        @apply focus:ring-2 focus:ring-primary/50 focus:border-primary;
+      }
+      .btn-hover {
+        @apply hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300;
+      }
+    }
+  </style>
+</head>
+<body class="font-inter bg-neutral min-h-screen">
+  <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <!-- 标题部分 -->
+    <header class="text-center mb-10">
+      <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-gray-800 mb-2">
+        氯离子环境下钢筋混凝土寿命预测
+      </h1>
+      <p class="text-gray-600 max-w-3xl mx-auto">
+        <span class="font-medium text-primary">上海建工五建集团有限公司 & 同济大学 联合研发</span>
+      </p>
+      <p class="text-gray-500 mt-2">
+        基于Fick第二定律扩散模型的钢筋混凝土结构寿命预测方法
+      </p>
+    </header>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <!-- 公式说明卡片 -->
+      <div class="lg:col-span-4">
+        <div class="bg-white rounded-xl p-6 card-shadow sticky top-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+            <i class="fa fa-book text-primary mr-2"></i> 计算原理
+          </h2>
+          
+          <div class="space-y-4">
+            <div class="p-3 bg-primary/5 rounded-lg">
+              <h3 class="font-medium text-primary mb-2">氯离子扩散寿命公式</h3>
+              <p class="text-gray-700 text-sm">
+                基于Fick第二定律的改进模型，考虑混凝土老化因子：
+              </p>
+              <div class="my-3 text-center">
+                <p class="text-gray-800">
+                  \( t = \left( \frac{X_{\text{cr}}}{2 \cdot \sqrt{D_{\text{cl},0} \cdot t_0^n} \cdot \text{erf}^{-1}\left(\frac{C_s - C_{\text{cr}}}{C_s}\right)} \right)^{\frac{2}{1-n}} \)
+                </p>
+              </div>
+              <p class="text-gray-700 text-sm">
+                其中 \( t \) 为混凝土结构使用寿命（年），\( X_{\text{cr}} \) 为保护层厚度（m），
+                \( D_{\text{cl},0} \) 为氯离子扩散系数（\( m^2/\text{年} \)），
+                \( C_{\text{cr}} \) 为临界氯离子浓度，\( C_s \) 为表面氯离子浓度，
+                \( n \) 为老化因子，\( t_0 \) 为参考时间（年）。
+              </p>
+            </div>
+            
+            <div>
+              <h3 class="font-medium text-gray-800 mb-2">参数说明</h3>
+              <ul class="text-gray-700 text-sm space-y-2">
+                <li class="flex items-start">
+                  <i class="fa fa-info-circle text-primary mt-1 mr-2"></i>
+                  <span><strong>保护层厚度</strong>：钢筋外混凝土保护层的最小厚度</span>
+                </li>
+                <li class="flex items-start">
+                  <i class="fa fa-info-circle text-primary mt-1 mr-2"></i>
+                  <span><strong>临界氯离子浓度</strong>：引发钢筋锈蚀的氯离子浓度阈值，通常为水泥重量的百分比</span>
+                </li>
+                <li class="flex items-start">
+                  <i class="fa fa-info-circle text-primary mt-1 mr-2"></i>
+                  <span><strong>环境氯离子浓度</strong>：结构表面接触的氯离子浓度</span>
+                </li>
+                <li class="flex items-start">
+                  <i class="fa fa-info-circle text-primary mt-1 mr-2"></i>
+                  <span><strong>扩散系数</strong>：氯离子在混凝土中的初始扩散能力</span>
+                </li>
+                <li class="flex items-start">
+                  <i class="fa fa-info-circle text-primary mt-1 mr-2"></i>
+                  <span><strong>老化因子</strong>：反映混凝土随时间老化对扩散系数的影响，<span class="text-primary">一般情况可取0.01，海水潮汐区、浪溅区视情况取0.01-0.5</span></span>
+                </li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 class="font-medium text-gray-800 mb-2">保护层厚度参考</h3>
+              <p class="text-gray-700 text-sm mb-2">
+                根据《混凝土结构耐久性设计标准》GB/T 50476-2019，不同环境下的保护层厚度建议：
+              </p>
+              <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                  <thead>
+                    <tr class="bg-gray-100">
+                      <th class="px-3 py-2 text-left">环境类别</th>
+                      <th class="px-3 py-2 text-left">保护层厚度(mm)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr class="border-b">
+                      <td class="px-3 py-2">一类(室内干燥环境)</td>
+                      <td class="px-3 py-2">20-25</td>
+                    </tr>
+                    <tr class="border-b">
+                      <td class="px-3 py-2">二类a(室内潮湿环境)</td>
+                      <td class="px-3 py-2">25-35</td>
+                    </tr>
+                    <tr class="border-b">
+                      <td class="px-3 py-2">二类b(露天环境)</td>
+                      <td class="px-3 py-2">35-40</td>
+                    </tr>
+                    <tr class="border-b">
+                      <td class="px-3 py-2">三类a(海水环境大气区)</td>
+                      <td class="px-3 py-2">40-50</td>
+                    </tr>
+                    <tr class="border-b">
+                      <td class="px-3 py-2">三类b(海水潮汐区、浪溅区)</td>
+                      <td class="px-3 py-2">45-60</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="text-gray-700 text-sm mt-2">
+                注：对于重要结构或设计使用年限较长的工程，保护层厚度可适当增加。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 计算部分 -->
+      <div class="lg:col-span-8">
+        <div class="bg-white rounded-xl p-6 card-shadow mb-8">
+          <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <i class="fa fa-calculator text-primary mr-2"></i> 参数输入
+          </h2>
+          
+          <form id="durabilityForm" class="space-y-6">
+            <!-- 环境类型选择 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="environmentType" class="block text-sm font-medium text-gray-700 mb-1">
+                  环境类型 <span class="text-primary">*</span>
+                </label>
+                <div class="relative">
+                  <select id="environmentType" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus appearance-none">
+                    <option value="atmospheric" selected>大气区</option>
+                    <option value="submerged">海水浸水区</option>
+                    <option value="splash">浪溅区</option>
+                    <option value="tidal">潮汐区</option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <i class="fa fa-chevron-down text-xs"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label for="structureType" class="block text-sm font-medium text-gray-700 mb-1">
+                  结构类型
+                </label>
+                <div class="relative">
+                  <select id="structureType" class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus appearance-none">
+                    <option value="" selected>请选择结构类型(可选)</option>
+                    <option value="marine">海洋工程</option>
+                    <option value="coastal">海岸工程</option>
+                    <option value="bridge">跨海桥梁</option>
+                    <option value="port">港口设施</option>
+                    <option value="other">其他结构</option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <i class="fa fa-chevron-down text-xs"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 基本参数 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="coverThickness" class="block text-sm font-medium text-gray-700 mb-1">
+                  保护层厚度 X_cr (cm) <span class="text-primary">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="coverThickness" step="0.1" min="1" max="100" value="45"
+                         class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <i class="fa fa-info-circle cursor-help" title="保护层厚度指最外层钢筋外边缘至混凝土表面的距离"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label for="criticalChloride" class="block text-sm font-medium text-gray-700 mb-1">
+                  临界氯离子浓度 C_cr (%) <span class="text-primary">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="criticalChloride" step="0.01" min="0.01" max="5" value="0.12"
+                         class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <i class="fa fa-info-circle cursor-help" title="引发钢筋锈蚀的氯离子浓度阈值，通常为水泥重量的百分比"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label for="surfaceChloride" class="block text-sm font-medium text-gray-700 mb-1">
+                  表面氯离子浓度 C_s (%) <span class="text-primary">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="surfaceChloride" step="0.01" min="0.01" max="10" value="1.0"
+                         class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <i class="fa fa-info-circle cursor-help" title="混凝土表面长期接触的氯离子浓度"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label for="diffusionCoefficient" class="block text-sm font-medium text-gray-700 mb-1">
+                  扩散系数 D_cl_0 (10^-12 m²/s) <span class="text-primary">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="diffusionCoefficient" step="0.01" min="0.01" max="100" value="1.0"
+                         class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <i class="fa fa-info-circle cursor-help" title="氯离子在混凝土中的初始扩散系数，取决于混凝土配合比和养护条件"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label for="referenceTime" class="block text-sm font-medium text-gray-700 mb-1">
+                  参考时间 t0 (年) <span class="text-primary">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="referenceTime" step="0.1" min="0.1" max="10" value="1.0"
+                         class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <i class="fa fa-info-circle cursor-help" title="扩散系数测量时的参考时间"></i>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label for="agingFactor" class="block text-sm font-medium text-gray-700 mb-1">
+                  老化因子 n_cl <span class="text-primary">*</span>
+                </label>
+                <div class="relative">
+                  <input type="number" id="agingFactor" step="0.01" min="0.01" max="0.99" value="0.01"
+                         class="w-full px-4 py-2 border border-gray-300 rounded-lg input-focus">
+                  <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <i class="fa fa-info-circle cursor-help" title="反映混凝土随时间老化对扩散系数的影响，一般情况可取0.01，海水潮汐区、浪溅区视情况取0.01-0.5"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 计算按钮 -->
+            <div class="pt-2">
+              <button type="button" id="calculateBtn" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center btn-hover">
+                <i class="fa fa-calculator mr-2"></i> 计算结构耐久性寿命
+              </button>
+            </div>
+          </form>
+        </div>
+        
+        <!-- 结果展示 -->
+        <div id="resultSection" class="bg-white rounded-xl p-6 card-shadow">
+          <h2 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+            <i class="fa fa-bar-chart text-primary mr-2"></i> 计算结果
+          </h2>
+          
+          <div id="resultPlaceholder" class="py-10 text-center text-gray-500">
+            <i class="fa fa-hourglass-half text-4xl mb-4"></i>
+            <p>请输入参数并点击"计算结构耐久性寿命"按钮</p>
+          </div>
+          
+          <div id="resultContent" class="hidden space-y-6">
+            <!-- 寿命结果 -->
+            <div class="p-4 bg-neutral rounded-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-medium text-gray-800">预测耐久性寿命</h3>
+                  <p class="text-sm text-gray-500">基于氯离子扩散模型计算</p>
+                </div>
+                <div class="text-3xl font-bold" id="lifetimeResult">0 年</div>
+              </div>
+              
+              <div class="mt-4">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-gray-600">耐久性等级</span>
+                  <span class="font-medium" id="durabilityRating">一般</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div id="durabilityProgress" class="bg-success h-2.5 rounded-full" style="width: 50%"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 氯离子浓度分布可视化 -->
+            <div>
+              <h3 class="text-lg font-medium text-gray-800 mb-3">氯离子浓度分布</h3>
+              <div class="bg-neutral p-4 rounded-lg h-64">
+                <canvas id="chlorideProfileChart"></canvas>
+              </div>
+            </div>
+            
+            <!-- 参数概要 -->
+            <div>
+              <h3 class="text-lg font-medium text-gray-800 mb-3">输入参数概要</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="bg-neutral p-3 rounded-lg">
+                  <p class="text-sm text-gray-500">保护层厚度</p>
+                  <p class="font-medium" id="summaryCoverThickness">45 cm</p>
+                </div>
+                <div class="bg-neutral p-3 rounded-lg">
+                  <p class="text-sm text-gray-500">临界氯离子浓度</p>
+                  <p class="font-medium" id="summaryCriticalChloride">0.12 %</p>
+                </div>
+                <div class="bg-neutral p-3 rounded-lg">
+                  <p class="text-sm text-gray-500">表面氯离子浓度</p>
+                  <p class="font-medium" id="summarySurfaceChloride">1.0 %</p>
+                </div>
+                <div class="bg-neutral p-3 rounded-lg">
+                  <p class="text-sm text-gray-500">扩散系数</p>
+                  <p class="font-medium" id="summaryDiffusionCoefficient">1.0 × 10⁻¹² m²/s</p>
+                </div>
+                <div class="bg-neutral p-3 rounded-lg">
+                  <p class="text-sm text-gray-500">老化因子</p>
+                  <p class="font-medium" id="summaryAgingFactor">0.1</p>
+                </div>
+                <div class="bg-neutral p-3 rounded-lg">
+                  <p class="text-sm text-gray-500">环境类型</p>
+                  <p class="font-medium" id="summaryEnvironmentType">大气区</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 耐久性评估 -->
+            <div id="durabilityAssessment" class="p-4 bg-primary/5 rounded-lg border border-primary/20">
+              <h3 class="text-lg font-medium text-primary mb-3">耐久性评估</h3>
+              <p id="assessmentMessage" class="text-gray-700">
+                基于输入参数，该结构的耐久性寿命预计为较长时间。保护层厚度较大，对抵抗氯离子侵蚀非常有利。
+              </p>
+            </div>
+            
+             <!-- 敏感性分析图表 
+             <div>
+               <h3 class="text-lg font-medium text-gray-800 mb-3">参数敏感性分析</h3>
+               <div class="bg-neutral p-4 rounded-lg h-64">
+                 <canvas id="sensitivityChart"></canvas>
+               </div>
+             </div>  -->
+            
+            <!-- 建议措施 -->
+            <div id="recommendations" class="p-4 bg-success/5 rounded-lg border border-success/20">
+              <h3 class="text-lg font-medium text-success mb-3">耐久性建议</h3>
+              <ul class="text-gray-700 space-y-2">
+                <li class="flex items-start">
+                  <i class="fa fa-check-circle text-success mt-1 mr-2"></i>
+                  <span>维持当前保护层厚度设计，确保施工过程中钢筋定位准确</span>
+                </li>
+                <li class="flex items-start">
+                  <i class="fa fa-check-circle text-success mt-1 mr-2"></i>
+                  <span>考虑使用低渗透性混凝土，进一步降低氯离子扩散系数</span>
+                </li>
+                <li class="flex items-start">
+                  <i class="fa fa-check-circle text-success mt-1 mr-2"></i>
+                  <span>定期监测结构的氯离子含量和钢筋锈蚀情况</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 页脚 -->
+    <footer class="mt-12 text-center text-gray-500 text-sm">
+      <p>© 2025 上海建工五建集团有限公司 & 同济大学. 保留所有权利.</p>
+      <p class="mt-1">本工具仅供工程参考，实际设计应符合相关规范要求.</p>
+    </footer>
+  </div>
+
+  <!-- 脚本 -->
+  <script>
+    // 实现erfinv函数
+    function erfinv(x) {
+      // 简化版erfinv实现，使用多项式近似
+      const a = 0.147;
+      const ln = Math.log(1 - x * x);
+      const part1 = (2 / (Math.PI * a)) + (ln / 2);
+      const part2 = ln / a;
+      const sign = x < 0 ? -1 : 1;
+      return sign * Math.sqrt(Math.sqrt(part1 * part1 - part2) - part1);
+    }
+    
+    // 计算耐久性寿命
+    document.getElementById('calculateBtn').addEventListener('click', function() {
+      // 获取输入值
+      const X_cr = parseFloat(document.getElementById('coverThickness').value) / 100; // 转换为米
+      const C_cr = parseFloat(document.getElementById('criticalChloride').value);
+      const C_s = parseFloat(document.getElementById('surfaceChloride').value);
+      const D_cl_0 = parseFloat(document.getElementById('diffusionCoefficient').value) * 1e-12 * 31536000; // 转换为 m²/年
+      const t0 = parseFloat(document.getElementById('referenceTime').value);
+      const n_cl = parseFloat(document.getElementById('agingFactor').value);
+      const environmentType = document.getElementById('environmentType').value;
+      
+      // 输入验证
+      if (isNaN(X_cr) || isNaN(C_cr) || isNaN(C_s) || isNaN(D_cl_0) || isNaN(t0) || isNaN(n_cl) || !environmentType) {
+        alert('请填写所有必填字段！');
+        return;
+      }
+      
+      if (C_s <= 0) {
+        alert('环境氯离子浓度 C_s 必须大于0！');
+        return;
+      }
+      
+      if (D_cl_0 <= 0 || t0 <= 0) {
+        alert('D_cl_0 和 t0 必须大于零！');
+        return;
+      }
+      
+      if (n_cl >= 1 || n_cl <= 0) {
+        alert('老化因子 n_cl 必须在 (0, 1) 范围内！');
+        return;
+      }
+      
+      // 显示加载状态
+      document.getElementById('resultPlaceholder').innerHTML = `
+        <i class="fa fa-spinner fa-spin text-4xl mb-4 text-primary"></i>
+        <p>正在计算中...</p>
+      `;
+      document.getElementById('resultPlaceholder').classList.remove('hidden');
+      document.getElementById('resultContent').classList.add('hidden');
+      
+      // 模拟计算延迟
+      setTimeout(() => {
+        try {
+          // 计算反误差函数
+          const inner_value = (C_s - C_cr) / C_s;
+          if (inner_value <= -1 || inner_value >= 1) {
+            throw new Error(`(C_s - C_cr)/C_s 必须在 (-1, 1) 范围内，当前值为 ${inner_value.toFixed(2)}`);
+          }
+          
+          // 引入环境影响系数
+          const environmentFactors = {
+            'submerged': 1.0,       // 海水浸水区
+            'splash': 1.5,          // 浪溅区 - 侵蚀最严重
+            'tidal': 1.2,           // 潮汐区
+            'atmospheric': 0.8      // 大气区 - 侵蚀较弱
+          };
+          
+          const envFactor = environmentFactors[environmentType] || 1.0;
+          
+          // 考虑时间依赖性的扩散系数
+          const timeFactor = Math.pow((t0 + 28/365) / (t0 + 28/365 + t0), n_cl);
+          
+          // 计算寿命
+          const exponent = 2 / (1 - n_cl);
+          const erf_inv_val = erfinv((C_s - C_cr) / C_s);
+          const diffusion_term = 2 * Math.sqrt(D_cl_0 * envFactor * Math.pow(t0, n_cl) * timeFactor) * erf_inv_val;
+          if (diffusion_term === 0) {
+            throw new Error('计算中出现除以零的情况');
+          }
+          
+          let t = Math.pow(X_cr / diffusion_term, exponent);
+          
+          // 应用工程安全系数
+          const safetyFactor = 0.6;
+          t = t * safetyFactor;
+          
+          // 限制最大寿命值
+          t = Math.min(t, 200);
+          
+          // 更新结果显示
+          updateResultDisplay(t, X_cr, C_cr, C_s, D_cl_0, n_cl, environmentType);
+          
+        } catch (error) {
+          document.getElementById('resultPlaceholder').innerHTML = `
+            <i class="fa fa-exclamation-triangle text-4xl mb-4 text-danger"></i>
+            <p>计算错误: ${error.message}</p>
+          `;
+        }
+      }, 1000);
+    });
+    
+    // 更新结果显示
+    function updateResultDisplay(t, X_cr, C_cr, C_s, D_cl_0, n_cl, environmentType) {
+      // 隐藏占位符，显示结果内容
+      document.getElementById('resultPlaceholder').classList.add('hidden');
+      document.getElementById('resultContent').classList.remove('hidden');
+      
+      // 更新寿命结果
+      const lifetimeElement = document.getElementById('lifetimeResult');
+      if (t >= 1000) {
+        lifetimeElement.textContent = `${t.toExponential(2)} 年`;
+      } else if (t >= 100) {
+        lifetimeElement.textContent = `${t.toFixed(0)} 年`;
+      } else if (t >= 10) {
+        lifetimeElement.textContent = `${t.toFixed(1)} 年`;
+      } else {
+        lifetimeElement.textContent = `${t.toFixed(2)} 年`;
+      }
+      
+      // 更新耐久性等级和进度条
+      let rating, progressColor, progressWidth, assessmentMessage;
+      if (t < 10) {
+        rating = '不足';
+        progressColor = 'bg-danger';
+        progressWidth = '20%';
+        assessmentMessage = '基于输入参数，该结构的耐久性寿命较短。建议增加保护层厚度或使用抗氯离子渗透能力更强的混凝土。';
+        document.getElementById('recommendations').className = 'p-4 bg-danger/5 rounded-lg border border-danger/20';
+        document.getElementById('recommendations').querySelector('h3').className = 'text-lg font-medium text-danger mb-3';
+      } else if (t < 50) {
+        rating = '一般';
+        progressColor = 'bg-warning';
+        progressWidth = '40%';
+        assessmentMessage = '基于输入参数，该结构的耐久性寿命一般。建议考虑增加保护层厚度或采取其他耐久性措施，如涂层保护。';
+        document.getElementById('recommendations').className = 'p-4 bg-warning/5 rounded-lg border border-warning/20';
+        document.getElementById('recommendations').querySelector('h3').className = 'text-lg font-medium text-warning mb-3';
+      } else if (t < 100) {
+        rating = '良好';
+        progressColor = 'bg-success';
+        progressWidth = '60%';
+        assessmentMessage = '基于输入参数，该结构的耐久性寿命良好。保护层厚度和材料性能均能较好地抵抗氯离子侵蚀。';
+        document.getElementById('recommendations').className = 'p-4 bg-success/5 rounded-lg border border-success/20';
+        document.getElementById('recommendations').querySelector('h3').className = 'text-lg font-medium text-success mb-3';
+      } else if (t < 500) {
+        rating = '优秀';
+        progressColor = 'bg-secondary';
+        progressWidth = '80%';
+        assessmentMessage = '基于输入参数，该结构的耐久性寿命优秀。保护层厚度较大，材料抗氯离子渗透性能良好，能长期抵抗环境侵蚀。';
+        document.getElementById('recommendations').className = 'p-4 bg-secondary/5 rounded-lg border border-secondary/20';
+        document.getElementById('recommendations').querySelector('h3').className = 'text-lg font-medium text-secondary mb-3';
+      } else {
+        rating = '卓越';
+        progressColor = 'bg-primary';
+        progressWidth = '100%';
+        assessmentMessage = '基于输入参数，该结构的耐久性寿命卓越。保护层厚度极大，材料抗氯离子渗透性能极佳，能满足超长期使用需求。';
+        document.getElementById('recommendations').className = 'p-4 bg-primary/5 rounded-lg border border-primary/20';
+        document.getElementById('recommendations').querySelector('h3').className = 'text-lg font-medium text-primary mb-3';
+      }
+      
+      document.getElementById('durabilityRating').textContent = rating;
+      document.getElementById('durabilityProgress').className = `h-2.5 rounded-full ${progressColor}`;
+      document.getElementById('durabilityProgress').style.width = progressWidth;
+      document.getElementById('assessmentMessage').textContent = assessmentMessage;
+      
+      // 更新参数概要
+      document.getElementById('summaryCoverThickness').textContent = `${(X_cr * 100).toFixed(1)} cm`;
+      document.getElementById('summaryCriticalChloride').textContent = `${C_cr.toFixed(2)} %`;
+      document.getElementById('summarySurfaceChloride').textContent = `${C_s.toFixed(2)} %`;
+      document.getElementById('summaryDiffusionCoefficient').textContent = `${parseFloat(document.getElementById('diffusionCoefficient').value).toFixed(2)} × 10⁻¹² m²/s`;
+      document.getElementById('summaryAgingFactor').textContent = n_cl.toFixed(2);
+      
+      const environmentTypes = {
+        'submerged': '海水浸水区',
+        'splash': '浪溅区',
+        'tidal': '潮汐区',
+        'atmospheric': '大气区'
+      };
+      document.getElementById('summaryEnvironmentType').textContent = environmentTypes[environmentType] || environmentType;
+      
+      // 更新氯离子浓度分布图
+      updateChlorideProfileChart(X_cr, C_cr, C_s, D_cl_0, n_cl, t, environmentType);
+      
+      // 更新敏感性分析图表
+      updateSensitivityChart(X_cr, C_cr, C_s, D_cl_0, n_cl, t);
+      
+      // 更新建议
+      updateRecommendations(t, X_cr, C_cr, C_s, D_cl_0, n_cl, environmentType);
+    }
+    
+    // 更新氯离子浓度分布图表
+    function updateChlorideProfileChart(X_cr, C_cr, C_s, D_cl_0, n_cl, t, environmentType) {
+      // 销毁已存在的图表
+      if (window.chlorideChart) {
+        window.chlorideChart.destroy();
+      }
+      
+      // 创建深度数据点 (0-1.2倍保护层厚度)
+      const depths = [];
+      const concentrations = [];
+      const criticalLine = [];
+      
+      // 生成深度数据和浓度数据
+      for (let x = 0; x <= X_cr; x += X_cr / 50) {
+        depths.push(x * 100); // 转换为厘米
+        
+        // 计算误差函数值
+        const inner_value = x / (2 * Math.sqrt(D_cl_0 * Math.pow(t, n_cl)));
+        
+        // 简化版erf函数实现
+        function erf(z) {
+          const t = 1 / (1 + 0.5 * Math.abs(z));
+          const a1 = 0.254829592;
+          const a2 = -0.284496736;
+          const a3 = 1.421413741;
+          const a4 = -1.453152027;
+          const a5 = 1.061405429;
+          const erf_val = 1 - (a1*t + a2*t*t + a3*t*t*t + a4*t*t*t*t + a5*t*t*t*t*t) * Math.exp(-z*z);
+          return z >= 0 ? erf_val : -erf_val;
+        }
+        
+        // 计算氯离子浓度
+        const C = C_s * (1 - erf(inner_value));
+        concentrations.push(C);
+        criticalLine.push(C_cr);
+      }
+      
+      // 创建图表
+      const ctx = document.getElementById('chlorideProfileChart').getContext('2d');
+      window.chlorideChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: depths,
+          datasets: [
+            {
+              label: '氯离子浓度 (%)',
+              data: concentrations,
+              borderColor: '#165DFF',
+              backgroundColor: 'rgba(22, 93, 255, 0.1)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: '临界氯离子浓度',
+              data: criticalLine,
+              borderColor: '#F53F3F',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.raw.toFixed(4) + ' %';
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: '距离混凝土表面深度 (cm)'
+              },
+              ticks: {
+                callback: function(value) {
+                  return value.toFixed(2); // 保留两位小数
+                }
+              },
+              min: 0,
+              max: X_cr * 100
+            },
+            y: {
+              title: {
+                display: true,
+                text: '氯离子浓度 (%)'
+              },
+              min: 0,
+              max: Math.max(C_s * 1.1, C_cr * 1.5)
+            }
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+          }
+        }
+      });
+      
+      // 在图表上标记保护层厚度位置
+      const xCrPosition = X_cr * 100;
+      const ctx2 = document.getElementById('chlorideProfileChart').getContext('2d');
+      const chart = window.chlorideChart;
+      
+      // 绘制保护层厚度标记线
+      chart.afterDraw(() => {
+        const xAxis = chart.scales.x;
+        const yAxis = chart.scales.y;
+        
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.moveTo(xAxis.getPixelForValue(xCrPosition), yAxis.getPixelForValue(0));
+        ctx2.lineTo(xAxis.getPixelForValue(xCrPosition), yAxis.getPixelForValue(yAxis.max));
+        ctx2.lineWidth = 2;
+        ctx2.strokeStyle = '#0FC6C2';
+        ctx2.setLineDash([5, 3]);
+        ctx2.stroke();
+        
+        // 添加保护层厚度标签
+        ctx2.fillStyle = '#0FC6C2';
+        ctx2.font = '12px Inter';
+        ctx2.textAlign = 'center';
+        ctx2.fillText(`保护层厚度 (${xCrPosition.toFixed(2)} cm)`, 
+                      xAxis.getPixelForValue(xCrPosition), 
+                      yAxis.getPixelForValue(yAxis.max) + 20);
+        ctx2.restore();
+      });
+    }
+    
+    // 更新敏感性分析图表
+    function updateSensitivityChart(X_cr, C_cr, C_s, D_cl_0, n_cl, t) {
+      try {
+        // 销毁已存在的图表
+        if (window.sensitivityChart) {
+          window.sensitivityChart.destroy();
+        }
+        
+        // 基础寿命
+        const baseLife = t;
+        
+        // 计算各参数变化±20%时的寿命变化
+        const factors = [0.8, 0.9, 1.0, 1.1, 1.2];
+        const labels = ['-20%', '-10%', '基准', '+10%', '+20%'];
+        
+        // 保护层厚度敏感性
+        const coverThicknessValues = factors.map(factor => {
+          const newX_cr = X_cr * factor;
+          const exponent = 2 / (1 - n_cl);
+          const diffusion_term = 2 * Math.sqrt(D_cl_0 * Math.pow(t, n_cl)) * erfinv((C_s - C_cr) / C_s);
+          return Math.pow(newX_cr / diffusion_term, exponent) * 0.6;
+        });
+        
+        // 临界氯离子浓度敏感性
+        const criticalChlorideValues = factors.map(factor => {
+          const newC_cr = C_cr * factor;
+          // 确保erfinv参数在有效范围内
+          const erf_arg = Math.max(-0.999, Math.min(0.999, (C_s - newC_cr) / C_s));
+          const exponent = 2 / (1 - n_cl);
+          const diffusion_term = 2 * Math.sqrt(D_cl_0 * Math.pow(t, n_cl)) * erfinv(erf_arg);
+          return Math.pow(X_cr / diffusion_term, exponent) * 0.6;
+        });
+        
+        // 表面氯离子浓度敏感性
+        const surfaceChlorideValues = factors.map(factor => {
+          const newC_s = C_s * factor;
+          // 确保erfinv参数在有效范围内
+          const erf_arg = Math.max(-0.999, Math.min(0.999, (newC_s - C_cr) / newC_s));
+          const exponent = 2 / (1 - n_cl);
+          const diffusion_term = 2 * Math.sqrt(D_cl_0 * Math.pow(t, n_cl)) * erfinv(erf_arg);
+          return Math.pow(X_cr / diffusion_term, exponent) * 0.6;
+        });
+        
+        // 扩散系数敏感性
+        const diffusionCoefficientValues = factors.map(factor => {
+          const newD_cl_0 = D_cl_0 * factor;
+          const exponent = 2 / (1 - n_cl);
+          const diffusion_term = 2 * Math.sqrt(newD_cl_0 * Math.pow(t, n_cl)) * erfinv((C_s - C_cr) / C_s);
+          return Math.pow(X_cr / diffusion_term, exponent) * 0.6;
+        });
+        
+        // 创建图表
+        const ctx = document.getElementById('sensitivityChart').getContext('2d');
+        window.sensitivityChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: '保护层厚度',
+                data: coverThicknessValues,
+                borderColor: '#165DFF',
+                backgroundColor: 'rgba(22, 93, 255, 0.1)',
+                borderWidth: 2,
+                tension: 0.2,
+                pointRadius: 4
+              },
+              {
+                label: '临界氯离子浓度',
+                data: criticalChlorideValues,
+                borderColor: '#0FC6C2',
+                backgroundColor: 'rgba(15, 198, 194, 0.1)',
+                borderWidth: 2,
+                tension: 0.2,
+                pointRadius: 4
+              },
+              {
+                label: '表面氯离子浓度',
+                data: surfaceChlorideValues,
+                borderColor: '#FF7D00',
+                backgroundColor: 'rgba(255, 125, 0, 0.1)',
+                borderWidth: 2,
+                tension: 0.2,
+                pointRadius: 4
+              },
+              {
+                label: '扩散系数',
+                data: diffusionCoefficientValues,
+                borderColor: '#F53F3F',
+                backgroundColor: 'rgba(245, 63, 63, 0.1)',
+                borderWidth: 2,
+                tension: 0.2,
+                pointRadius: 4
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+                callbacks: {
+                  label: function(context) {
+                    const value = context.raw;
+                    const change = ((value / baseLife) - 1) * 100;
+                    return context.dataset.label + ': ' + value.toFixed(1) + ' 年 (' + change.toFixed(1) + '%)';
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                title: {
+                  display: true,
+                  text: '参数变化比例'
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: '预测耐久性寿命 (年)'
+                },
+                min: 0
+              }
+            },
+            animation: {
+              duration: 1000,
+              easing: 'easeOutQuart'
+            }
+          }
+        });
+        
+        console.log('敏感性分析图表生成成功');
+      } catch (error) {
+        console.error('敏感性分析图表生成失败:', error);
+        // 可以在这里添加错误提示UI
+        const sensitivityChartContainer = document.getElementById('sensitivityChart').parentElement;
+        sensitivityChartContainer.innerHTML = `
+          <div class="flex flex-col items-center justify-center h-full text-gray-500">
+            <i class="fa fa-exclamation-triangle text-3xl mb-2 text-warning"></i>
+            <p>敏感性分析图表生成失败</p>
+            <p class="text-xs mt-1">错误: ${error.message}</p>
+          </div>
+        `;
+      }
+    }
+    
+    // 更新建议
+    function updateRecommendations(t, X_cr, C_cr, C_s, D_cl_0, n_cl, environmentType) {
+      const recommendationsList = document.getElementById('recommendations').querySelector('ul');
+      recommendationsList.innerHTML = '';
+      
+      // 基本建议
+      let recommendations = [
+        {
+          text: '定期监测结构的氯离子含量和钢筋锈蚀情况',
+          icon: 'check-circle',
+          color: 'success'
+        }
+      ];
+      
+      // 根据寿命和参数添加特定建议
+      if (t < 50) {
+        recommendations.unshift({
+          text: '考虑增加保护层厚度，建议至少达到规范要求的最大值',
+          icon: 'exclamation-circle',
+          color: 'warning'
+        });
+        
+        recommendations.push({
+          text: '考虑使用抗氯离子渗透能力更强的混凝土，如添加矿物掺合料',
+          icon: 'exclamation-circle',
+          color: 'warning'
+        });
+      } else {
+        recommendations.unshift({
+          text: '维持当前保护层厚度设计，确保施工过程中钢筋定位准确',
+          icon: 'check-circle',
+          color: 'success'
+        });
+        
+        if (D_cl_0 > 2.0 * 1e-12) {
+          recommendations.push({
+            text: '考虑使用低渗透性混凝土，进一步降低氯离子扩散系数',
+            icon: 'info-circle',
+            color: 'primary'
+          });
+        }
+      }
+      
+      // 根据环境类型添加建议
+      if (environmentType === 'splash' || environmentType === 'tidal') {
+        recommendations.push({
+          text: '考虑对混凝土表面进行涂层保护，减少氯离子侵入',
+          icon: 'info-circle',
+          color: 'primary'
+        });
+      }
+      
+      // 输出建议
+      recommendations.forEach(rec => {
+        const li = document.createElement('li');
+        li.className = 'flex items-start';
+        li.innerHTML = `
+          <i class="fa fa-${rec.icon} text-${rec.color} mt-1 mr-2"></i>
+          <span>${rec.text}</span>
+        `;
+        recommendationsList.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
